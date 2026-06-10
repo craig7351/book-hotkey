@@ -17,6 +17,21 @@ npm run dev          # 開發模式
 npm run build        # 打包安裝檔
 ```
 
+## 發佈（多平台 CI/CD）
+
+推送 `v*` 標籤即觸發 GitHub Actions，於 Windows / macOS (Intel + Apple Silicon) / Linux
+同時打包，並建立一個**草稿** Release 附上各平台安裝檔：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+完成後到 GitHub 的 Releases 頁面檢視草稿、確認無誤後按 Publish。
+亦可在 Actions 頁面手動 `workflow_dispatch` 觸發。
+
+> macOS/Linux 產物未做程式碼簽章；macOS 首次開啟需右鍵「打開」繞過 Gatekeeper。
+
 ## 里程碑
 
 - [x] **M1 骨架** — 系統匣常駐、全域熱鍵、游標定位懸浮視窗、Esc/失焦隱藏、開機自啟動
