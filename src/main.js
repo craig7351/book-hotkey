@@ -1,7 +1,11 @@
 // Tauri 全域注入（withGlobalTauri: true），無需打包器。
 const { getCurrentWindow } = window.__TAURI__.window;
 const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
 const appWindow = getCurrentWindow();
+
+// 匯入 JSON 後後端會發出此事件，重新載入按鈕。
+listen("commands-changed", () => loadAndRender());
 
 const panel = document.getElementById("panel");
 const grid = document.getElementById("grid");

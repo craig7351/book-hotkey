@@ -8,11 +8,12 @@ mod window;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, State, WindowEvent,
+    AppHandle, Emitter, Manager, State, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 const HOTKEY_LABEL: &str = "main";
@@ -66,6 +67,40 @@ fn resize_window(app: AppHandle, height: f64) {
     }
 }
 
+/// 開啟存檔對話框，把指令清單匯出成 JSON。
+fn export_commands(app: &AppHandle) {
+    let app = app.clone();
+    app.dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .set_file_name("book-hotkey-commands.json")
+        .save_file(move |path| {
+            if let Some(p) = path.and_then(|fp| fp.into_path().ok()) {
+                if let Err(e) = config::export_to(&app, &p) {
+                    eprintln!("匯出失敗: {e}");
+                }
+            }
+        });
+}
+
+/// 開啟開檔對話框，匯入 JSON 覆蓋目前指令清單，並通知前端重新載入。
+fn import_commands(app: &AppHandle) {
+    let app = app.clone();
+    app.dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .pick_file(move |path| {
+            if let Some(p) = path.and_then(|fp| fp.into_path().ok()) {
+                match config::import_from(&app, &p) {
+                    Ok(()) => {
+                        let _ = app.emit("commands-changed", ());
+                    }
+                    Err(e) => eprintln!("匯入失敗: {e}"),
+                }
+            }
+        });
+}
+
 fn main() {
     // Ctrl+Shift+A — 寫死的全域熱鍵。
     let toggle_hotkey = Shortcut::new(
@@ -74,6 +109,14 @@ fn main() {
     );
 
     tauri::Builder::default()
+        // 單一實例保護：第二次啟動時叫出既有視窗、不再開新程序。
+        // 必須最先註冊。
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(win) = app.get_webview_window(HOTKEY_LABEL) {
+                window::show_at_cursor(&win);
+            }
+        }))
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             None,
@@ -107,9 +150,26 @@ fn main() {
             app.global_shortcut().register(toggle_hotkey)?;
 
             // 系統匣圖示 + 選單。
-            let show_item = MenuItem::with_id(app, "show", "顯示 (Ctrl+Shift+A)", true, None::<&str>)?;
+            let show_item =
+                MenuItem::with_id(app, "show", "顯示 (Ctrl+Shift+A)", true, None::<&str>)?;
+            let export_item =
+                MenuItem::with_id(app, "export", "匯出 JSON…", true, None::<&str>)?;
+            let import_item =
+                MenuItem::with_id(app, "import", "匯入 JSON…", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "結束", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let sep1 = PredefinedMenuItem::separator(app)?;
+            let sep2 = PredefinedMenuItem::separator(app)?;
+            let menu = Menu::with_items(
+                app,
+                &[
+                    &show_item,
+                    &sep1,
+                    &export_item,
+                    &import_item,
+                    &sep2,
+                    &quit_item,
+                ],
+            )?;
 
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().unwrap().clone())
@@ -122,6 +182,8 @@ fn main() {
                             window::show_at_cursor(&win);
                         }
                     }
+                    "export" => export_commands(app),
+                    "import" => import_commands(app),
                     "quit" => app.exit(0),
                     _ => {}
                 })

@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
@@ -48,4 +48,30 @@ pub fn save(app: &AppHandle, commands: Vec<Command>) -> Result<(), String> {
         serde_json::to_string_pretty(&config).map_err(|e| format!("序列化設定失敗: {e}"))?;
     fs::write(&path, data).map_err(|e| format!("寫入設定失敗: {e}"))?;
     Ok(())
+}
+
+/// 把目前的指令清單匯出到指定檔案。
+pub fn export_to(app: &AppHandle, dest: &Path) -> Result<(), String> {
+    let commands = load(app)?;
+    let config = Config { commands };
+    let data =
+        serde_json::to_string_pretty(&config).map_err(|e| format!("序列化失敗: {e}"))?;
+    fs::write(dest, data).map_err(|e| format!("寫入匯出檔失敗: {e}"))?;
+    Ok(())
+}
+
+/// 從指定檔案匯入指令清單並覆蓋目前設定。
+/// 接受兩種格式：`{ "commands": [...] }` 或直接是 `[...]` 陣列。
+pub fn import_from(app: &AppHandle, src: &Path) -> Result<(), String> {
+    let data = fs::read_to_string(src).map_err(|e| format!("讀取匯入檔失敗: {e}"))?;
+    let commands = parse_commands(&data)?;
+    save(app, commands)
+}
+
+fn parse_commands(data: &str) -> Result<Vec<Command>, String> {
+    if let Ok(config) = serde_json::from_str::<Config>(data) {
+        return Ok(config.commands);
+    }
+    serde_json::from_str::<Vec<Command>>(data)
+        .map_err(|e| format!("JSON 格式不符（需含 id/label/content）: {e}"))
 }
