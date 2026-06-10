@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>book-hotkey — 一鍵貼上你的常用指令</title>
+    <meta
+      name="description"
+      content="快速貼上指令的跨平台懸浮小工具。背景常駐，按下熱鍵在游標附近叫出懸浮面板，一鍵把預設文字貼到游標處。"
+    />
+    <style>
+      :root {
+        --bg: #16171a;
+        --bg-soft: #1f2125;
+        --card: #24262b;
+        --fg: #e8eaed;
+        --muted: #9aa0a6;
+        --accent: #8ab4f8;
+        --accent-2: #6366f1;
+        --border: rgba(255, 255, 255, 0.1);
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: "Segoe UI", "Microsoft JhengHei", system-ui, -apple-system,
+          sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.6;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      code {
+        font-family: "Cascadia Code", Consolas, monospace;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 2px 7px;
+        border-radius: 6px;
+        font-size: 0.9em;
+      }
+
+      /* ---- nav ---- */
+      nav {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(22, 23, 26, 0.85);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+      }
+      nav .wrap {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        height: 60px;
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .brand .bolt {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+      }
+      nav .links {
+        display: flex;
+        gap: 22px;
+        margin-left: auto;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      nav .links a:hover {
+        color: var(--fg);
+      }
+      .btn {
+        display: inline-block;
+        padding: 9px 18px;
+        border-radius: 9px;
+        font-size: 15px;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        transition: all 0.15s ease;
+        cursor: pointer;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn.primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #16171a;
+        border-color: transparent;
+      }
+      .btn.primary:hover {
+        opacity: 0.9;
+      }
+
+      /* ---- hero ---- */
+      header {
+        padding: 96px 0 80px;
+        text-align: center;
+        background: radial-gradient(
+          ellipse 60% 50% at 50% 0%,
+          rgba(99, 102, 241, 0.18),
+          transparent
+        );
+      }
+      header h1 {
+        font-size: 52px;
+        line-height: 1.15;
+        letter-spacing: -1px;
+        margin-bottom: 20px;
+      }
+      header h1 .grad {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      header p.lead {
+        font-size: 20px;
+        color: var(--muted);
+        max-width: 640px;
+        margin: 0 auto 32px;
+      }
+      .cta {
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .badges {
+        margin-top: 28px;
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 14px;
+        flex-wrap: wrap;
+      }
+      .badges span {
+        border: 1px solid var(--border);
+        padding: 5px 14px;
+        border-radius: 999px;
+      }
+
+      /* ---- sections ---- */
+      section {
+        padding: 72px 0;
+        border-top: 1px solid var(--border);
+      }
+      section h2 {
+        font-size: 32px;
+        text-align: center;
+        margin-bottom: 12px;
+      }
+      section .sub {
+        text-align: center;
+        color: var(--muted);
+        margin-bottom: 48px;
+      }
+
+      /* ---- features ---- */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 18px;
+      }
+      .feature {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+      }
+      .feature .ico {
+        font-size: 28px;
+        margin-bottom: 12px;
+      }
+      .feature h3 {
+        font-size: 17px;
+        margin-bottom: 6px;
+      }
+      .feature p {
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      /* ---- screenshots ---- */
+      .shots {
+        display: grid;
+        gap: 40px;
+      }
+      .shot {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+        align-items: center;
+      }
+      .shot:nth-child(even) .shot-text {
+        order: 2;
+      }
+      .shot img {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--bg-soft);
+      }
+      .shot h3 {
+        font-size: 22px;
+        margin-bottom: 10px;
+      }
+      .shot p {
+        color: var(--muted);
+      }
+
+      /* ---- download ---- */
+      .dl-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+      }
+      .dl {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 28px 24px;
+        text-align: center;
+      }
+      .dl .os {
+        font-size: 34px;
+        margin-bottom: 10px;
+      }
+      .dl h3 {
+        margin-bottom: 4px;
+      }
+      .dl p {
+        color: var(--muted);
+        font-size: 14px;
+        margin-bottom: 18px;
+      }
+
+      /* ---- steps ---- */
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+        counter-reset: step;
+      }
+      .step {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+      }
+      .step::before {
+        counter-increment: step;
+        content: counter(step);
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #16171a;
+        font-weight: 700;
+        margin-bottom: 14px;
+      }
+      .step h3 {
+        font-size: 17px;
+        margin-bottom: 6px;
+      }
+      .step p {
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      /* ---- footer ---- */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 40px 0;
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      footer a {
+        color: var(--accent);
+      }
+
+      @media (max-width: 720px) {
+        header h1 {
+          font-size: 38px;
+        }
+        .shot {
+          grid-template-columns: 1fr;
+        }
+        .shot:nth-child(even) .shot-text {
+          order: 0;
+        }
+        nav .links {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <div class="wrap">
+        <div class="brand"><span class="bolt">⚡</span> book-hotkey</div>
+        <div class="links">
+          <a href="#features">功能</a>
+          <a href="#shots">畫面</a>
+          <a href="#download">下載</a>
+        </div>
+        <a
+          class="btn"
+          href="https://github.com/craig7351/book-hotkey"
+          target="_blank"
+          rel="noopener"
+          >GitHub</a
+        >
+      </div>
+    </nav>
+
+    <header>
+      <div class="wrap">
+        <h1>一鍵貼上<br /><span class="grad">你的常用指令</span></h1>
+        <p class="lead">
+          背景常駐的跨平台懸浮小工具。按下熱鍵，在游標旁叫出面板，點一下就把預設好的文字片段貼到目前位置——密碼、帳號、指令、罐頭回覆，通通秒貼。
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="#download">免費下載</a>
+          <a
+            class="btn"
+            href="https://github.com/craig7351/book-hotkey"
+            target="_blank"
+            rel="noopener"
+            >查看原始碼</a
+          >
+        </div>
+        <div class="badges">
+          <span>🪟 Windows</span>
+          <span>🍎 macOS</span>
+          <span>🐧 Linux</span>
+          <span>📦 安裝檔約 1–2 MB</span>
+        </div>
+      </div>
+    </header>
+
+    <section id="features">
+      <div class="wrap">
+        <h2>功能特色</h2>
+        <p class="sub">為「少打字、不離手」而生</p>
+        <div class="grid">
+          <div class="feature">
+            <div class="ico">⌨️</div>
+            <h3>全域熱鍵呼叫</h3>
+            <p>任何程式中按下熱鍵（預設 Ctrl + Shift + A）即可叫出面板，可自訂組合鍵。</p>
+          </div>
+          <div class="feature">
+            <div class="ico">📍</div>
+            <h3>游標處彈出</h3>
+            <p>面板在游標附近出現，操作距離最短；多螢幕自動夾回畫面內，不超出邊界。</p>
+          </div>
+          <div class="feature">
+            <div class="ico">📋</div>
+            <h3>智慧貼上</h3>
+            <p>暫存你原本的剪貼簿 → 寫入指令 → 模擬貼上 → 還原，貼完不弄亂剪貼簿。</p>
+          </div>
+          <div class="feature">
+            <div class="ico">✏️</div>
+            <h3>自由增刪改</h3>
+            <p>點「＋ 新增」建立、右鍵按鈕即可編輯或刪除，設定即時儲存。</p>
+          </div>
+          <div class="feature">
+            <div class="ico">📤</div>
+            <h3>匯入 / 匯出 JSON</h3>
+            <p>指令清單可匯出備份、分享給同事，或在多台電腦間同步。</p>
+          </div>
+          <div class="feature">
+            <div class="ico">🪶</div>
+            <h3>輕量省資源</h3>
+            <p>Tauri 打造，安裝檔約 1–2 MB、記憶體約 15–30 MB，背景常駐無感。</p>
+          </div>
+          <div class="feature">
+            <div class="ico">🔒</div>
+            <h3>單一實例</h3>
+            <p>不會重複開啟；開機自啟動，登入即就緒。</p>
+          </div>
+          <div class="feature">
+            <div class="ico">🌐</div>
+            <h3>真正跨平台</h3>
+            <p>Windows / macOS / Linux 同一套體驗，由 CI 自動打包各平台安裝檔。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="shots">
+      <div class="wrap">
+        <h2>實機畫面</h2>
+        <p class="sub">乾淨的深色懸浮介面，不打擾你的工作流</p>
+        <div class="shots">
+          <div class="shot">
+            <div class="shot-text">
+              <h3>懸浮面板</h3>
+              <p>
+                按下熱鍵，面板在游標旁彈出。點按鈕即把文字貼到原本游標處；面板依按鈕數量自動調整大小，失焦或按
+                <code>Esc</code> 自動隱藏。
+              </p>
+            </div>
+            <img src="screenshots/panel.png" alt="懸浮面板" />
+          </div>
+          <div class="shot">
+            <div class="shot-text">
+              <h3>新增 / 編輯指令</h3>
+              <p>
+                在按鈕上按右鍵即可編輯，或點「＋ 新增」建立。設定按鈕名稱與要貼上的內容，可隨時刪除。
+              </p>
+            </div>
+            <img src="screenshots/edit-command.png" alt="編輯指令" />
+          </div>
+          <div class="shot">
+            <div class="shot-text">
+              <h3>系統匣選單</h3>
+              <p>
+                常駐於系統匣 ⚡ 圖示，內含顯示面板、修改熱鍵、匯出 / 匯入 JSON、結束。
+              </p>
+            </div>
+            <img src="screenshots/tray-menu.png" alt="系統匣選單" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="download">
+      <div class="wrap">
+        <h2>下載</h2>
+        <p class="sub">從 GitHub Releases 取得最新版安裝檔</p>
+        <div class="dl-grid">
+          <div class="dl">
+            <div class="os">🪟</div>
+            <h3>Windows</h3>
+            <p>setup.exe（NSIS 安裝程式）</p>
+            <a
+              class="btn primary"
+              href="https://github.com/craig7351/book-hotkey/releases/latest"
+              target="_blank"
+              rel="noopener"
+              >下載</a
+            >
+          </div>
+          <div class="dl">
+            <div class="os">🍎</div>
+            <h3>macOS</h3>
+            <p>.dmg（Intel 與 Apple Silicon）</p>
+            <a
+              class="btn primary"
+              href="https://github.com/craig7351/book-hotkey/releases/latest"
+              target="_blank"
+              rel="noopener"
+              >下載</a
+            >
+          </div>
+          <div class="dl">
+            <div class="os">🐧</div>
+            <h3>Linux</h3>
+            <p>.AppImage / .deb</p>
+            <a
+              class="btn primary"
+              href="https://github.com/craig7351/book-hotkey/releases/latest"
+              target="_blank"
+              rel="noopener"
+              >下載</a
+            >
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="start">
+      <div class="wrap">
+        <h2>快速上手</h2>
+        <p class="sub">三步驟開始用</p>
+        <div class="steps">
+          <div class="step">
+            <h3>安裝並啟動</h3>
+            <p>安裝後自動於背景執行（並設開機自啟動），系統匣出現 ⚡ 圖示。</p>
+          </div>
+          <div class="step">
+            <h3>新增你的指令</h3>
+            <p>按 <code>Ctrl + Shift + A</code> 叫出面板，點「＋ 新增」設定按鈕名稱與內容。</p>
+          </div>
+          <div class="step">
+            <h3>一鍵貼上</h3>
+            <p>把游標放到輸入處，按熱鍵叫出面板，點按鈕即把文字貼到游標位置。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        <p>
+          book-hotkey · 以
+          <a href="https://tauri.app" target="_blank" rel="noopener">Tauri 2</a>
+          打造 ·
+          <a
+            href="https://github.com/craig7351/book-hotkey"
+            target="_blank"
+            rel="noopener"
+            >GitHub</a
+          >
+        </p>
+        <p style="margin-top: 8px; opacity: 0.7">
+          macOS 模擬貼上需授權「輔助使用」；Linux 支援 X11。
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
