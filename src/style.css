@@ -1,0 +1,175 @@
+:root {
+  --bg: rgba(32, 33, 36, 0.96);
+  --fg: #e8eaed;
+  --muted: #9aa0a6;
+  --accent: #8ab4f8;
+  --danger: #f28b82;
+  --btn: rgba(255, 255, 255, 0.08);
+  --btn-hover: rgba(255, 255, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.10);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background: transparent;
+  font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+  user-select: none;
+  overflow: hidden;
+}
+
+#panel {
+  position: relative;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+#titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: grab;
+  flex-shrink: 0;
+}
+#titlebar .title {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+#grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  padding: 4px 12px 12px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.cmd {
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--btn);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmd:hover:not(:disabled) {
+  background: var(--btn-hover);
+}
+.cmd:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.cmd.placeholder {
+  color: var(--muted);
+  cursor: default;
+  font-style: italic;
+}
+.cmd.add {
+  color: var(--accent);
+  border-style: dashed;
+}
+
+/* ---- 編輯表單（取代按鈕區，非覆蓋層，方便視窗依高度自適應） ---- */
+#editor {
+  padding: 4px 12px 12px;
+}
+#editor.hidden {
+  display: none;
+}
+.hidden {
+  display: none !important;
+}
+
+.editor-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.editor-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.field input,
+.field textarea {
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  resize: none;
+  user-select: text;
+}
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-actions .spacer {
+  flex: 1;
+}
+.btn {
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--btn);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.btn:hover {
+  background: var(--btn-hover);
+}
+.btn.primary {
+  background: var(--accent);
+  color: #202124;
+  border-color: transparent;
+  font-weight: 600;
+}
+.btn.danger {
+  color: var(--danger);
+}

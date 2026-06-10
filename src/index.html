@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>book-hotkey</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="panel">
+      <div id="titlebar" data-tauri-drag-region>
+        <span class="title">快速指令</span>
+        <span class="hint">右鍵編輯 · Esc 關閉</span>
+      </div>
+
+      <!-- 指令按鈕：由 main.js 依設定動態渲染 -->
+      <div id="grid"></div>
+
+      <!-- 新增/編輯表單（預設隱藏） -->
+      <div id="editor" class="hidden">
+        <div class="editor-card">
+          <div class="editor-title" id="editorTitle">新增指令</div>
+          <label class="field">
+            <span>按鈕名稱</span>
+            <input id="labelInput" type="text" maxlength="40" placeholder="例如：問候語" />
+          </label>
+          <label class="field">
+            <span>指令內容</span>
+            <textarea id="contentInput" rows="4" placeholder="貼上時要輸入的文字…"></textarea>
+          </label>
+          <div class="editor-actions">
+            <button id="deleteBtn" class="btn danger hidden">刪除</button>
+            <span class="spacer"></span>
+            <button id="cancelBtn" class="btn">取消</button>
+            <button id="saveBtn" class="btn primary">儲存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

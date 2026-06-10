@@ -1,0 +1,15 @@
+{
+  "name": "book-hotkey",
+  "version": "0.1.0",
+  "description": "快速貼上指令的懸浮小工具",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
