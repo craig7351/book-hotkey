@@ -5,7 +5,9 @@ mod config;
 mod paste;
 mod window;
 
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -14,15 +16,17 @@ use tauri::{
 };
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 const HOTKEY_LABEL: &str = "main";
 
 /// 應用程式共享狀態。
 #[derive(Default)]
 struct AppState {
-    /// 為 true 時暫停「失焦自動隱藏」（編輯指令時用，避免表單被吞掉）。
+    /// 為 true 時暫停「失焦自動隱藏」（編輯時用，避免表單被吞掉）。
     pinned: AtomicBool,
+    /// 目前已註冊的全域熱鍵，供改鍵時先解除註冊。
+    current_hotkey: Mutex<Option<Shortcut>>,
 }
 
 /// 前端點擊指令按鈕時呼叫：先隱藏視窗讓焦點回到目標程式，再於背景執行貼上。
@@ -53,7 +57,7 @@ fn save_commands(app: AppHandle, commands: Vec<config::Command>) -> Result<(), S
     config::save(&app, commands)
 }
 
-/// 設定是否釘住視窗（暫停失焦自動隱藏）。編輯指令時設為 true。
+/// 設定是否釘住視窗（暫停失焦自動隱藏）。編輯時設為 true。
 #[tauri::command]
 fn set_pinned(state: State<AppState>, pinned: bool) {
     state.pinned.store(pinned, Ordering::Relaxed);
@@ -63,8 +67,35 @@ fn set_pinned(state: State<AppState>, pinned: bool) {
 #[tauri::command]
 fn resize_window(app: AppHandle, height: f64) {
     if let Some(win) = app.get_webview_window(HOTKEY_LABEL) {
-        let _ = win.set_size(tauri::LogicalSize::new(window::WINDOW_WIDTH, height));
+        window::set_height_and_fit(&win, height);
     }
+}
+
+/// 回傳目前熱鍵（Tauri accelerator 字串）。
+#[tauri::command]
+fn get_hotkey(app: AppHandle) -> String {
+    config::load_hotkey(&app)
+}
+
+/// 設定新熱鍵：解除舊的、註冊新的、寫入設定。
+#[tauri::command]
+fn set_hotkey(app: AppHandle, state: State<AppState>, accelerator: String) -> Result<(), String> {
+    let shortcut =
+        Shortcut::from_str(&accelerator).map_err(|_| format!("無法解析熱鍵: {accelerator}"))?;
+
+    let gs = app.global_shortcut();
+
+    // 解除舊熱鍵。
+    if let Some(old) = state.current_hotkey.lock().unwrap().take() {
+        let _ = gs.unregister(old);
+    }
+
+    gs.register(shortcut)
+        .map_err(|e| format!("註冊熱鍵失敗（可能與其他程式衝突）: {e}"))?;
+
+    *state.current_hotkey.lock().unwrap() = Some(shortcut);
+    config::save_hotkey(&app, accelerator)?;
+    Ok(())
 }
 
 /// 開啟存檔對話框，把指令清單匯出成 JSON。
@@ -102,15 +133,8 @@ fn import_commands(app: &AppHandle) {
 }
 
 fn main() {
-    // Ctrl+Shift+A — 寫死的全域熱鍵。
-    let toggle_hotkey = Shortcut::new(
-        Some(Modifiers::CONTROL | Modifiers::SHIFT),
-        Code::KeyA,
-    );
-
     tauri::Builder::default()
-        // 單一實例保護：第二次啟動時叫出既有視窗、不再開新程序。
-        // 必須最先註冊。
+        // 單一實例保護：第二次啟動時叫出既有視窗、不再開新程序。必須最先註冊。
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(win) = app.get_webview_window(HOTKEY_LABEL) {
                 window::show_at_cursor(&win);
@@ -127,12 +151,15 @@ fn main() {
             load_commands,
             save_commands,
             set_pinned,
-            resize_window
+            resize_window,
+            get_hotkey,
+            set_hotkey
         ])
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |app, shortcut, event| {
-                    if shortcut == &toggle_hotkey && event.state() == ShortcutState::Pressed {
+                // 只會註冊一個熱鍵，按下時切換視窗即可。
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
                         if let Some(win) = app.get_webview_window(HOTKEY_LABEL) {
                             window::toggle(&win);
                         }
@@ -140,18 +167,23 @@ fn main() {
                 })
                 .build(),
         )
-        .setup(move |app| {
+        .setup(|app| {
             // 開機自啟動（首次啟用）。
             use tauri_plugin_autostart::ManagerExt;
-            let autostart = app.autolaunch();
-            let _ = autostart.enable();
+            let _ = app.autolaunch().enable();
 
-            // 註冊全域熱鍵。
-            app.global_shortcut().register(toggle_hotkey)?;
+            // 讀取設定中的熱鍵並註冊（解析失敗則退回預設）。
+            let accelerator = config::load_hotkey(app.handle());
+            let shortcut = Shortcut::from_str(&accelerator)
+                .or_else(|_| Shortcut::from_str(&config::default_hotkey()))
+                .expect("預設熱鍵應可解析");
+            app.global_shortcut().register(shortcut)?;
+            *app.state::<AppState>().current_hotkey.lock().unwrap() = Some(shortcut);
 
             // 系統匣圖示 + 選單。
-            let show_item =
-                MenuItem::with_id(app, "show", "顯示 (Ctrl+Shift+A)", true, None::<&str>)?;
+            let show_item = MenuItem::with_id(app, "show", "顯示面板", true, None::<&str>)?;
+            let hotkey_item =
+                MenuItem::with_id(app, "hotkey", "修改熱鍵…", true, None::<&str>)?;
             let export_item =
                 MenuItem::with_id(app, "export", "匯出 JSON…", true, None::<&str>)?;
             let import_item =
@@ -163,6 +195,7 @@ fn main() {
                 app,
                 &[
                     &show_item,
+                    &hotkey_item,
                     &sep1,
                     &export_item,
                     &import_item,
@@ -173,7 +206,7 @@ fn main() {
 
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("book-hotkey — 按 Ctrl+Shift+A 叫出")
+                .tooltip("book-hotkey")
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -181,6 +214,14 @@ fn main() {
                         if let Some(win) = app.get_webview_window(HOTKEY_LABEL) {
                             window::show_at_cursor(&win);
                         }
+                    }
+                    "hotkey" => {
+                        // 釘住避免改鍵時失焦隱藏；顯示視窗並通知前端開啟改鍵介面。
+                        app.state::<AppState>().pinned.store(true, Ordering::Relaxed);
+                        if let Some(win) = app.get_webview_window(HOTKEY_LABEL) {
+                            window::show_at_cursor(&win);
+                        }
+                        let _ = app.emit("edit-hotkey", ());
                     }
                     "export" => export_commands(app),
                     "import" => import_commands(app),
@@ -192,7 +233,7 @@ fn main() {
             Ok(())
         })
         .on_window_event(|win, event| match event {
-            // 失焦自動隱藏（編輯指令時釘住則略過）。
+            // 失焦自動隱藏（編輯/改鍵時釘住則略過）。
             WindowEvent::Focused(false) => {
                 let pinned = win.state::<AppState>().pinned.load(Ordering::Relaxed);
                 if !pinned {

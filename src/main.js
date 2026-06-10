@@ -7,6 +7,9 @@ const appWindow = getCurrentWindow();
 // 匯入 JSON 後後端會發出此事件，重新載入按鈕。
 listen("commands-changed", () => loadAndRender());
 
+// 系統匣「修改熱鍵…」會發出此事件，開啟改鍵介面。
+listen("edit-hotkey", () => openHotkeyEditor());
+
 const panel = document.getElementById("panel");
 const grid = document.getElementById("grid");
 const editor = document.getElementById("editor");
@@ -145,11 +148,109 @@ deleteBtn.addEventListener("click", async () => {
 
 cancelBtn.addEventListener("click", () => closeEditor());
 
-// ---- Esc：表單開啟時先關表單，否則隱藏視窗 ----
+// ---- 修改熱鍵 ----
+const hotkeyEditor = document.getElementById("hotkeyEditor");
+const hkCurrent = document.getElementById("hkCurrent");
+const hkCapture = document.getElementById("hkCapture");
+const hkError = document.getElementById("hkError");
+const hkSaveBtn = document.getElementById("hkSaveBtn");
+const hkCancelBtn = document.getElementById("hkCancelBtn");
+
+let pendingAccelerator = null;
+
+// 把 KeyboardEvent 轉成 Tauri accelerator 字串（修飾鍵 + W3C code）。
+function toAccelerator(e) {
+  // 忽略只按修飾鍵的情況。
+  if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return null;
+  const mods = [];
+  if (e.ctrlKey) mods.push("CONTROL");
+  if (e.altKey) mods.push("ALT");
+  if (e.shiftKey) mods.push("SHIFT");
+  if (e.metaKey) mods.push("SUPER");
+  if (mods.length === 0 || !e.code) return null;
+  return [...mods, e.code].join("+");
+}
+
+// 美化顯示（不影響實際儲存的字串）。
+function prettyAccelerator(acc) {
+  return acc
+    .split("+")
+    .map((p) => {
+      const u = p.toUpperCase();
+      if (u === "CONTROL" || u === "CTRL" || u === "CMDORCONTROL") return "Ctrl";
+      if (u === "SHIFT") return "Shift";
+      if (u === "ALT" || u === "OPTION") return "Alt";
+      if (["SUPER", "META", "CMD", "COMMAND"].includes(u)) return "Win";
+      if (p.startsWith("Key")) return p.slice(3);
+      if (p.startsWith("Digit")) return p.slice(5);
+      if (p.startsWith("Arrow")) return p.slice(5);
+      return p;
+    })
+    .join(" + ");
+}
+
+async function openHotkeyEditor() {
+  grid.classList.add("hidden");
+  editor.classList.add("hidden");
+  hotkeyEditor.classList.remove("hidden");
+  hkError.classList.add("hidden");
+  pendingAccelerator = null;
+  hkSaveBtn.disabled = true;
+  try {
+    const cur = await invoke("get_hotkey");
+    hkCurrent.textContent = prettyAccelerator(cur);
+  } catch {
+    hkCurrent.textContent = "—";
+  }
+  hkCapture.textContent = "點此後按下新的組合鍵…";
+  invoke("set_pinned", { pinned: true });
+  hkCapture.focus();
+}
+
+function closeHotkeyEditor() {
+  hotkeyEditor.classList.add("hidden");
+  grid.classList.remove("hidden");
+  pendingAccelerator = null;
+  invoke("set_pinned", { pinned: false });
+}
+
+hkCapture.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") return; // 讓全域 Esc 處理（取消）
+  e.preventDefault();
+  e.stopPropagation();
+  const acc = toAccelerator(e);
+  if (!acc) {
+    hkCapture.textContent = "請搭配修飾鍵…";
+    hkSaveBtn.disabled = true;
+    pendingAccelerator = null;
+    return;
+  }
+  pendingAccelerator = acc;
+  hkCapture.textContent = prettyAccelerator(acc);
+  hkError.classList.add("hidden");
+  hkSaveBtn.disabled = false;
+});
+
+hkSaveBtn.addEventListener("click", async () => {
+  if (!pendingAccelerator) return;
+  try {
+    await invoke("set_hotkey", { accelerator: pendingAccelerator });
+    closeHotkeyEditor();
+  } catch (err) {
+    hkError.textContent = String(err);
+    hkError.classList.remove("hidden");
+  }
+});
+
+hkCancelBtn.addEventListener("click", () => closeHotkeyEditor());
+
+// ---- Esc：表單/改鍵開啟時先關，否則隱藏視窗 ----
 window.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!editor.classList.contains("hidden")) {
     closeEditor();
+  } else if (!hotkeyEditor.classList.contains("hidden")) {
+    closeHotkeyEditor();
   } else {
     appWindow.hide();
   }

@@ -1,6 +1,6 @@
 [package]
 name = "book-hotkey"
-version = "1.0.0"
+version = "1.0.1"
 description = "快速貼上指令的懸浮小工具"
 edition = "2021"
 rust-version = "1.77"

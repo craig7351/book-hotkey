@@ -16,6 +16,22 @@
       <!-- 指令按鈕：由 main.js 依設定動態渲染 -->
       <div id="grid"></div>
 
+      <!-- 修改熱鍵介面（預設隱藏） -->
+      <div id="hotkeyEditor" class="hidden">
+        <div class="editor-card">
+          <div class="editor-title">修改熱鍵</div>
+          <div class="hk-current">目前：<span id="hkCurrent">—</span></div>
+          <div id="hkCapture" class="hk-capture" tabindex="0">點此後按下新的組合鍵…</div>
+          <div class="hk-tip">需含修飾鍵（Ctrl / Alt / Shift / Win），例如 Ctrl + Shift + A</div>
+          <div id="hkError" class="hk-error hidden"></div>
+          <div class="editor-actions">
+            <span class="spacer"></span>
+            <button id="hkCancelBtn" class="btn">取消</button>
+            <button id="hkSaveBtn" class="btn primary" disabled>儲存</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 新增/編輯表單（預設隱藏） -->
       <div id="editor" class="hidden">
         <div class="editor-card">

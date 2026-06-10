@@ -93,11 +93,47 @@ body {
 }
 
 /* ---- 編輯表單（取代按鈕區，非覆蓋層，方便視窗依高度自適應） ---- */
-#editor {
+#editor,
+#hotkeyEditor {
   padding: 4px 12px 12px;
 }
-#editor.hidden {
+#editor.hidden,
+#hotkeyEditor.hidden {
   display: none;
+}
+
+/* ---- 改鍵介面 ---- */
+.hk-current {
+  font-size: 12px;
+  color: var(--muted);
+}
+.hk-current #hkCurrent {
+  color: var(--fg);
+  font-weight: 600;
+}
+.hk-capture {
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--fg);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  outline: none;
+}
+.hk-capture:focus {
+  border-color: var(--accent);
+  border-style: solid;
+}
+.hk-tip {
+  font-size: 11px;
+  color: var(--muted);
+}
+.hk-error {
+  font-size: 12px;
+  color: var(--danger);
 }
 .hidden {
   display: none !important;

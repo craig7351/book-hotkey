@@ -1,7 +1,32 @@
-use tauri::{PhysicalPosition, WebviewWindow};
+use tauri::{LogicalSize, PhysicalPosition, WebviewWindow};
 
 /// 視窗固定寬度（邏輯像素）；高度由內容動態決定。
 pub const WINDOW_WIDTH: f64 = 440.0;
+
+/// 設定視窗高度後，重新把視窗夾回所在螢幕範圍內（避免長高後底部超出螢幕被切掉）。
+pub fn set_height_and_fit(win: &WebviewWindow, logical_height: f64) {
+    let _ = win.set_size(LogicalSize::new(WINDOW_WIDTH, logical_height));
+
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let w = (WINDOW_WIDTH * scale).round() as i32;
+    let h = (logical_height * scale).round() as i32;
+
+    let Ok(pos) = win.outer_position() else {
+        return;
+    };
+
+    if let Ok(Some(monitor)) = win.current_monitor() {
+        let mp = monitor.position();
+        let ms = monitor.size();
+        let max_x = mp.x + ms.width as i32 - w;
+        let max_y = mp.y + ms.height as i32 - h;
+        let x = pos.x.clamp(mp.x, max_x.max(mp.x));
+        let y = pos.y.clamp(mp.y, max_y.max(mp.y));
+        if x != pos.x || y != pos.y {
+            let _ = win.set_position(PhysicalPosition::new(x, y));
+        }
+    }
+}
 
 /// 切換顯示／隱藏懸浮視窗。
 pub fn toggle(win: &WebviewWindow) {
