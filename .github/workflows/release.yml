@@ -73,6 +73,6 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "book-hotkey ${{ github.ref_name }}"
           releaseBody: "各平台安裝檔見下方 Assets。"
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

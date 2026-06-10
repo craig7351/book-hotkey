@@ -27,8 +27,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-完成後到 GitHub 的 Releases 頁面檢視草稿、確認無誤後按 Publish。
-亦可在 Actions 頁面手動 `workflow_dispatch` 觸發。
+完成後會直接發佈 Release（非草稿）。亦可在 Actions 頁面手動 `workflow_dispatch` 觸發。
 
 > macOS/Linux 產物未做程式碼簽章；macOS 首次開啟需右鍵「打開」繞過 Gatekeeper。
 
